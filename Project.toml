@@ -1,0 +1,16 @@
+name = "Dimensions"
+uuid = "5f902022-033a-44bd-a904-0a49265d4d22"
+version = "0.1.0"
+authors = ["Tucker McClure <tucker@gradient.team>"]
+
+[workspace]
+projects = ["test"]
+
+[weakdeps]
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[extensions]
+DimensionsStaticArraysExt = "StaticArrays"
+
+[compat]
+StaticArrays = "1.9.15"
