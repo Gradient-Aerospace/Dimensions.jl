@@ -1,6 +1,6 @@
 # Dimensions.jl
 
-This Julia package provides an interfacing for defining a type's "dimensions". E.g., a vector with 3 elements (which might be a position in 3D Cartesian space) would have 3 dimensions, the "x", "y", and "z" parts. Essentially, every scalar making up a type could be a dimension of that type.
+This Julia package provides an interface for defining a type's "dimensions". E.g., a vector with 3 elements (which might be a position in 3D Cartesian space) would have 3 dimensions, the "x", "y", and "z" parts. Essentially, every scalar making up a type could be a dimension of that type.
 
 (This is notably different use of the word "dimension" from Julia's "array dimensions". A 3-element vector is made of up 3 scalars and hence has three independent dimensions in the nomenclature here, even though the Vector type is a "1D array".)
 
@@ -23,9 +23,22 @@ struct Position
 end
 
 import Dimensions
-Dimensions.dimstyle(::Type{Position}) = Dimensions.ScalarDimensionStyle()
+Dimensions.dimstyle(::Type{Position}) = Dimensions.StructDimensionStyle()
 ```
 
-The remaining functions are already implemented for that "style"; the dimensions will be taken as the combination of the dimensions of the dimensions of the fields. Here, `numdims(x)` will clearly be 3, `getdim(x, 2)` will return the `y` field, and `eachdim(x)` will return an iterator over `x`, then `y`, then `z`.
+The remaining functions are already implemented for that "style"; the dimensions will be taken as the combination of the dimensions of the fields. Here, `numdims(x)` will clearly be 3, `getdim(x, 2)` will return the `y` field, and `eachdim(x)` will return an iterator over `x`, then `y`, then `z`.
+
+Further, structs of structs work just as well. Consider the following:
+
+```
+using StaticArrays: SVector
+struct TranslationState
+    position::Position
+    velocity::SVector{3, Float64}
+end
+Dimensions.dimstyle(::Type{TranslationState}) = Dimensions.StructDimensionStyle()
+```
+
+That type has 6 dimensions, 3 from position and 3 from velocity.
 
 This is useful for anything that needs to break a type all the way down to its fundamental scalars. For instance, when plotting a vector of `Position` over time, a plotting package could first make a line for each position's dimension 1, then a line for each position's dimension 2, and then for each position's dimension 3, giving three lines. More generally, it is a way of serializing the data to scalars.
