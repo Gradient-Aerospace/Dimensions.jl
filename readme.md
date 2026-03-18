@@ -42,3 +42,10 @@ Dimensions.dimstyle(::Type{TranslationState}) = Dimensions.StructDimensionStyle(
 That type has 6 dimensions, 3 from position and 3 from velocity.
 
 This is useful for anything that needs to break a type all the way down to its fundamental scalars. For instance, when plotting a vector of `Position` over time, a plotting package could first make a line for each position's dimension 1, then a line for each position's dimension 2, and then for each position's dimension 3, giving three lines. More generally, it is a way of serializing the data to scalars.
+
+## Available Dimension Styles
+
+* `ScalarDimensionStyle`: Always 1 dimensional
+* `ComplexDimensionStyle`: Always 2 dimensional
+* `RealVectorDimensionStyle`: The dimensions are the elements of the vector (all real)
+* `StructDimensionStyle`: The dimensions are the set containing the dimensions of the fields, recursively, all the way down. This works for most but not all types. An example where it doesn't work: the Rational type has `num` and `den` fields, but it's really a single real dimension, not two separate dimensions.

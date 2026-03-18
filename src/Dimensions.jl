@@ -7,7 +7,7 @@ struct UnknownDimensionStyle <: AbstractDimensionStyle end
 struct ScalarDimensionStyle <: AbstractDimensionStyle end
 struct ComplexDimensionStyle <: AbstractDimensionStyle end
 struct RealVectorDimensionStyle <: AbstractDimensionStyle end
-struct NdVectorDimensionStyle{N} <: AbstractDimensionStyle end # ConsistentVectorStyle?
+# struct VectorOfNdElementsDimensionStyle{N} <: AbstractDimensionStyle end
 # It seems like we could make a general vector dimension thing that acts like the struct thing.
 struct StructDimensionStyle <: AbstractDimensionStyle end
 
@@ -16,18 +16,17 @@ struct StructDimensionStyle <: AbstractDimensionStyle end
 
 Returns the "dimension style" for `x`. The available dimension styles are:
 
-* ScalarDimensionStyle: Always 1 dimensional
-* ComplexDimensionStyle: Always 2 dimensional
-* RealVectorDimensionStyle: The dimensions are the elements of the vector (all real)
-* NdVectorDimensionStyle: All elements have the same dimensionality, so ... TODO
-* StructDimensionStyle: TODO
+* `ScalarDimensionStyle`: Always 1 dimensional
+* `ComplexDimensionStyle`: Always 2 dimensional
+* `RealVectorDimensionStyle`: The dimensions are the elements of the vector (all real)
+* `StructDimensionStyle`: The dimensions are the set containing the dimensions of the fields, recursively, all the way down. This works for most but not all types. An example where it doesn't work: the Rational type has `num` and `den` fields, but it's really a single real dimension, not two separate dimensions.
 """
-dimstyle(::Type{<: Any}) = UnknownDimensionStyle()
-dimstyle(::Type{<: Real}) = ScalarDimensionStyle()
-dimstyle(::Type{<: Complex}) = ComplexDimensionStyle()
-dimstyle(::Type{<: Enum}) = ScalarDimensionStyle()
-dimstyle(::Type{T}) where {T <: Vector{<: Real}} = RealVectorDimensionStyle()
-dimstyle(::Type{Vector{T}}) where {T} = NdVectorDimensionStyle{numdims_for_type(T)}()
+dimstyle(::Type{<:Any}) = UnknownDimensionStyle()
+dimstyle(::Type{<:Real}) = ScalarDimensionStyle()
+dimstyle(::Type{<:Complex}) = ComplexDimensionStyle()
+dimstyle(::Type{<:Enum}) = ScalarDimensionStyle()
+dimstyle(::Type{<:Vector{<:Real}}) = RealVectorDimensionStyle()
+# dimstyle(::Type{Vector{T}}) where {T} = VectorOfNdElementsDimensionStyle{numdims_for_type(T)}()
 
 """
     getdim(x, d)
@@ -51,7 +50,7 @@ function getdim(::StructDimensionStyle, x::T, d) where {T}
     end
     error("Dimension $d does not exist for $T.")
 end
-getdim(::NdVectorDimensionStyle{N}, x, d) where {N} = getdim(x[cld(d, N)], mod1(d, N))
+# getdim(::VectorOfNdElementsDimensionStyle{N}, x, d) where {N} = getdim(x[cld(d, N)], mod1(d, N))
 
 """
     numdims_for_type(t)
@@ -63,8 +62,8 @@ numdims_for_type(t) = numdims_for_type(dimstyle(t), t)
 numdims_for_type(::ScalarDimensionStyle, t) = 1
 numdims_for_type(::ComplexDimensionStyle, t) = 2
 numdims_for_type(::StructDimensionStyle, t::Type{T}) where {T} = sum(numdims_for_type(ft) for ft in fieldtypes(T))
-# Note that the following dimensions can't be known from their types: 
-# RealVectorDimensionStyle, NdVectorDimensionStyle
+# Note that the following dimensions can't be known from their types:
+# RealVectorDimensionStyle, VectorOfNdElementsDimensionStyle
 
 """
     numdims(x)
@@ -76,7 +75,7 @@ numdims(::ScalarDimensionStyle, x) = 1
 numdims(::ComplexDimensionStyle, x) = 2
 numdims(::RealVectorDimensionStyle, x) = length(x)
 numdims(::StructDimensionStyle, x::T) where {T} = sum(numdims(getfield(x, f)) for f in fieldnames(T))
-numdims(::NdVectorDimensionStyle{N}, x) where {N} = length(x) * N
+# numdims(::VectorOfNdElementsDimensionStyle{N}, x) where {N} = length(x) * N
 
 """
     eachdim(x)
