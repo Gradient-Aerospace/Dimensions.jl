@@ -63,7 +63,30 @@ end
     test_real_vector([1., 2., 3.])
     test_real_vector([4,])
     test_real_vector(Float64[])
+    test_real_vector(1:3)
+    test_real_vector(@view [1., 2., 3.][2:3])
     test_real_vector(SVector{3, Float64}(1., 2., 3.))
+end
+
+@testset "numdims_for_type" begin
+    @test numdims_for_type(Float64) == 1
+    @test numdims_for_type(ComplexF64) == 2
+    @test numdims_for_type(Tree) == 1
+    @test numdims_for_type(Position) == 3
+    @test numdims_for_type(Composite) == 2
+    @test numdims_for_type(BigType) == 5
+    @test numdims_for_type(SVector{3, Float64}) == 3
+    @test_throws ArgumentError numdims_for_type(Vector{Float64})
+    @test_throws ArgumentError numdims_for_type(1)
+end
+
+@testset "unsupported types" begin
+    @test dimstyle(String) == Dimensions.UnknownDimensionStyle()
+    @test_throws ArgumentError numdims("hello")
+    @test_throws ArgumentError getdim("hello", 1)
+    @test_throws ArgumentError eachdim("hello")
+    @test_throws ArgumentError numdims([1 2; 3 4])
+    @test_throws ArgumentError numdims_for_type(String)
 end
 
 @testset "structs" begin

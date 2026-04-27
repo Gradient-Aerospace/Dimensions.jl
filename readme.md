@@ -7,11 +7,12 @@ This Julia package provides an interface for defining a type's "dimensions". E.g
 The key functionality comes from the following functions:
 
 * `numdims(x)` returns the number of dimensions of `x`
+* `numdims_for_type(T)` returns the number of dimensions for values of type `T`, when that is known from the type alone
 * `getdim(x, k)` returns dimension `k` of `x`
 * `eachdim(x)` returns an iterator over the dimensions of `x`
-* `dimstyle(t)` returns the dimension "style" of type `t`
+* `dimstyle(T)` returns the dimension "style" of type `T`
 
-By default, this works with `Real` numbers (1D), `Complex` numbers, (2D), enums (1D), and `Vector`s of `Real` elements. It also works for `SVectors` if you have StaticArrays imported.
+By default, this works with `Real` numbers (1D), `Complex` numbers (2D), enums (1D), and `AbstractVector`s of `Real` elements. It also works for `SVectors` if you have StaticArrays imported.
 
 To add "dimensional" behavior to a custom type, just add methods for those functions for your type. And in fact, most types can be handled simply by adding a method to `dimstyle`. Here's an example:
 
@@ -26,7 +27,7 @@ import Dimensions
 Dimensions.dimstyle(::Type{Position}) = Dimensions.StructDimensionStyle()
 ```
 
-The remaining functions are already implemented for that "style"; the dimensions will be taken as the combination of the dimensions of the fields. Here, `numdims(x)` will clearly be 3, `getdim(x, 2)` will return the `y` field, and `eachdim(x)` will return an iterator over `x`, then `y`, then `z`.
+The remaining functions are already implemented for that "style"; the dimensions will be taken as the combination of the dimensions of the fields. Here, `numdims(x)` and `numdims_for_type(Position)` will clearly be 3, `getdim(x, 2)` will return the `y` field, and `eachdim(x)` will return an iterator over `x`, then `y`, then `z`.
 
 Further, structs of structs work just as well. Consider the following:
 
@@ -43,9 +44,11 @@ That type has 6 dimensions, 3 from position and 3 from velocity.
 
 This is useful for anything that needs to break a type all the way down to its fundamental scalars. For instance, when plotting a vector of `Position` over time, a plotting package could first make a line for each position's dimension 1, then a line for each position's dimension 2, and then for each position's dimension 3, giving three lines. More generally, it is a way of serializing the data to scalars.
 
+`numdims_for_type(T)` is useful when the dimensionality is fixed by the type, such as `Float64`, `ComplexF64`, `SVector{3, Float64}`, or a `StructDimensionStyle` type whose fields all have type-known dimensionality. It is not available for value-dependent types like ordinary dynamic vectors; call `numdims(x)` on a value in those cases.
+
 ## Available Dimension Styles
 
 * `ScalarDimensionStyle`: Always 1 dimensional
 * `ComplexDimensionStyle`: Always 2 dimensional
-* `RealVectorDimensionStyle`: The dimensions are the elements of the vector (all real)
+* `RealVectorDimensionStyle`: The dimensions are the elements of the `AbstractVector` (all real)
 * `StructDimensionStyle`: The dimensions are the set containing the dimensions of the fields, recursively, all the way down. This works for most but not all types. An example where it doesn't work: the Rational type has `num` and `den` fields, but it's really a single real dimension, not two separate dimensions.
