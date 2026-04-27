@@ -1,6 +1,6 @@
 module Dimensions
 
-export dimstyle, numdims, getdim, eachdim
+export dimstyle, numdims, getdim, eachdim, numdims_for_type
 
 abstract type AbstractDimensionStyle end
 struct UnknownDimensionStyle <: AbstractDimensionStyle end
@@ -12,9 +12,9 @@ struct RealVectorDimensionStyle <: AbstractDimensionStyle end
 struct StructDimensionStyle <: AbstractDimensionStyle end
 
 """
-    dimstyle(x)
+    dimstyle(::Type{T})
 
-Returns the "dimension style" for `x`. The available dimension styles are:
+Returns the "dimension style" for type `T`. The available dimension styles are:
 
 * `ScalarDimensionStyle`: Always 1 dimensional
 * `ComplexDimensionStyle`: Always 2 dimensional
@@ -25,8 +25,24 @@ dimstyle(::Type{<:Any}) = UnknownDimensionStyle()
 dimstyle(::Type{<:Real}) = ScalarDimensionStyle()
 dimstyle(::Type{<:Complex}) = ComplexDimensionStyle()
 dimstyle(::Type{<:Enum}) = ScalarDimensionStyle()
-dimstyle(::Type{<:Vector{<:Real}}) = RealVectorDimensionStyle()
+dimstyle(::Type{<:AbstractVector{<:Real}}) = RealVectorDimensionStyle()
 # dimstyle(::Type{Vector{T}}) where {T} = VectorOfNdElementsDimensionStyle{numdims_for_type(T)}()
+
+function _unsupported_type_error(t)
+    return ArgumentError(
+        "No dimension behavior is defined for values of type $t. " *
+        "Define `Dimensions.dimstyle(::Type{$t})` or add type-specific `numdims`, " *
+        "`getdim`, and `eachdim` methods."
+    )
+end
+
+function _unknown_type_dimension_error(t)
+    return ArgumentError(
+        "The number of dimensions for $t is not known from the type alone. " *
+        "Call `numdims(x)` on a value, or define a more specific " *
+        "`Dimensions.numdims_for_type` method."
+    )
+end
 
 """
     getdim(x, d)
@@ -34,9 +50,10 @@ dimstyle(::Type{<:Vector{<:Real}}) = RealVectorDimensionStyle()
 Returns dimension `d` of `x` and throws an error if the given dimension is invalid.
 """
 getdim(x, d) = getdim(dimstyle(typeof(x)), x, d)
-getdim(::ScalarDimensionStyle, x, d) = d == 1 ? x : error("Dimension $d does not exist for a type with a `ScalarDimensionStyle``.")
-getdim(::ComplexDimensionStyle, x, d) = d == 1 ? real(x) : (d == 2 ? imag(x) : error("Dimension $d does not exist for a type with a `ComplexDimensionStyle``."))
-getdim(::RealVectorDimensionStyle, x, d) = x[d]
+getdim(::UnknownDimensionStyle, x, d) = throw(_unsupported_type_error(typeof(x)))
+getdim(::ScalarDimensionStyle, x, d) = d == 1 ? x : error("Dimension $d does not exist for a type with a `ScalarDimensionStyle`.")
+getdim(::ComplexDimensionStyle, x, d) = d == 1 ? real(x) : (d == 2 ? imag(x) : error("Dimension $d does not exist for a type with a `ComplexDimensionStyle`."))
+getdim(::RealVectorDimensionStyle, x, d) = x[axes(x, 1)[d]]
 function getdim(::StructDimensionStyle, x::T, d) where {T}
     n_dims_so_far = 0
     for f in fieldnames(T)
@@ -53,17 +70,20 @@ end
 # getdim(::VectorOfNdElementsDimensionStyle{N}, x, d) where {N} = getdim(x[cld(d, N)], mod1(d, N))
 
 """
-    numdims_for_type(t)
+    numdims_for_type(::Type{T})
 
-Returns the number of dimensions for the given type. Note that this is not available for all
-types. E.g., a Vector's dimensions are not available from its type.
+Returns the number of dimensions for values of type `T`, when that number is known from the
+type alone. Note that this is not available for all types. E.g., an `AbstractVector`'s
+dimensions are generally value-dependent and are not available from its type.
 """
-numdims_for_type(t) = numdims_for_type(dimstyle(t), t)
+numdims_for_type(t::Type) = numdims_for_type(dimstyle(t), t)
+numdims_for_type(x) = throw(ArgumentError("`numdims_for_type` expects a type; use `numdims(x)` for values."))
+numdims_for_type(::UnknownDimensionStyle, t) = throw(_unsupported_type_error(t))
 numdims_for_type(::ScalarDimensionStyle, t) = 1
 numdims_for_type(::ComplexDimensionStyle, t) = 2
+numdims_for_type(::RealVectorDimensionStyle, t) = throw(_unknown_type_dimension_error(t))
 numdims_for_type(::StructDimensionStyle, t::Type{T}) where {T} = sum(numdims_for_type(ft) for ft in fieldtypes(T))
-# Note that the following dimensions can't be known from their types:
-# RealVectorDimensionStyle, VectorOfNdElementsDimensionStyle
+# Note that the following dimensions can't be known from their types: RealVectorDimensionStyle
 
 """
     numdims(x)
@@ -71,6 +91,7 @@ numdims_for_type(::StructDimensionStyle, t::Type{T}) where {T} = sum(numdims_for
 Returns the number of dimensions for `x`.
 """
 numdims(x) = numdims(dimstyle(typeof(x)), x)
+numdims(::UnknownDimensionStyle, x) = throw(_unsupported_type_error(typeof(x)))
 numdims(::ScalarDimensionStyle, x) = 1
 numdims(::ComplexDimensionStyle, x) = 2
 numdims(::RealVectorDimensionStyle, x) = length(x)
@@ -83,6 +104,7 @@ numdims(::StructDimensionStyle, x::T) where {T} = sum(numdims(getfield(x, f)) fo
 Returns an iterator over the dimensions of `x`.
 """
 eachdim(x) = eachdim(dimstyle(typeof(x)), x)
+eachdim(::UnknownDimensionStyle, x) = throw(_unsupported_type_error(typeof(x)))
 eachdim(::ScalarDimensionStyle, x) = (x,)
 eachdim(::ComplexDimensionStyle, x) = (x.re, x.im)
 eachdim(::RealVectorDimensionStyle, x) = x # already an iterator
